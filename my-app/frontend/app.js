@@ -1,5 +1,5 @@
-const API_BASE_URL = "http://127.0.0.1:8000"; // change if needed
-const CHAT_ENDPOINT = "/chat"; // adjust to your actual endpoint
+const API_BASE_URL = "http://127.0.0.1:8000"; // this is just for local development
+const CHAT_ENDPOINT = "/chat"; // adjust to actual endpoint where needed
 
 const chatForm = document.getElementById("chat-form");
 const userInput = document.getElementById("user-input");
