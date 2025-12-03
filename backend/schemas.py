@@ -9,6 +9,7 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     history: Optional[List[Message]] = None
+    session_id: Optional[str] = "default"
 
 class Task(BaseModel):
     # Required

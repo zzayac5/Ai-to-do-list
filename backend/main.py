@@ -5,7 +5,7 @@ import sqlite3
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from typing import List
+from typing import List, Dict
 from pydantic import BaseModel
 
 
@@ -26,6 +26,7 @@ TODAY = date.today().isoformat()
 load_dotenv() 
 
 SYSTEM_PROMPT: str = build_system_prompt(TODAY)
+CONVERSATIONS: Dict[str, List[dict[str, str]]] = {}
 
 app = FastAPI()
 
@@ -48,13 +49,19 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     # Build messages array with system + history + latest user message
+    session_id = request.session_id or "default"
+    stored_history = CONVERSATIONS.get(session_id, [])
+    request_history = (
+        [{"role": m.role, "content": m.content} for m in request.history]
+        if request.history
+        else stored_history
+    )
+
     chat_messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
     ]
 
-    if request.history:
-        for m in request.history:
-            chat_messages.append({"role": m.role, "content": m.content})
+    chat_messages.extend(request_history)
 
     chat_messages.append({"role": "user", "content": request.message})
 
@@ -99,4 +106,9 @@ async def chat(request: ChatRequest):
         tasks.append(task)
 
     reply = data.get("reply", "") or ""
+    # Persist conversation so follow-ups have context
+    conversation_history = list(request_history)
+    conversation_history.append({"role": "user", "content": request.message})
+    conversation_history.append({"role": "assistant", "content": raw_content})
+    CONVERSATIONS[session_id] = conversation_history
     return ChatResponse(reply=reply, tasks=tasks)
