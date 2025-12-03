@@ -1,174 +1,198 @@
 # backend/prompt_parts.py
 
 from datetime import date
+# backend/prompt_parts.py
 
-# 1) The exact JSON schema block as a raw string.
-# This can include { } freely because we never use it inside an f-string directly.
-SCHEMA_BLOCK = """
-{
-  "reply": "<summary of what the user wants to accomplish>",
-  "tasks": [
+from textwrap import dedent
+
+
+SCHEMA_BLOCK = dedent(
+    """
+    You MUST ALWAYS respond with a single valid JSON object using this exact schema:
+
     {
-      "description": "<short task description>",
-      "date": "<YYYY-MM-DD or null>",
-      "time": "<HH:MM or null>",
-      "duration": <integer minutes or null>,
-      "priority": "<High | Medium | Low | None, or null>",
-      "importance": "<Urgent and Important | Not Urgent but Important | Urgent but Not Important | Not Urgent and Not Important, or null>",
-      "confidence": <1-10>,
-      "additional_details": "<extra context or null>",
-      "anyone_needed": "<people needed or null>"
+      "reply": "<natural language reply to the user, including any follow-up questions>",
+      "tasks": [
+        {
+          "description": "<short task description>",
+          "date": "<YYYY-MM-DD or null>",
+          "time": "<HH:MM (24-hour) or null>",
+          "duration": <integer minutes or null>,
+          "priority": "<High | Medium | Low | None, or null>",
+          "importance": "<Urgent and Important | Not Urgent but Important | Urgent but Not Important | Not Urgent and Not Important, or null>",
+          "confidence": <integer 1–10 or null>,
+          "additional_details": "<extra context or null>",
+          "anyone_needed": "<comma-separated people needed or null>"
+        }
+      ]
     }
-  ]
-}
-""".strip()
 
+    Rules:
+    - The top-level value MUST be a JSON object with keys "reply" and "tasks".
+    - "tasks" MUST always be an array (possibly empty).
+    - Use JSON null for unknown or missing values, NOT empty strings, for date, time, duration, priority, importance, confidence, additional_details, anyone_needed.
+    - Do NOT include any keys that are not listed in the schema.
+    - Do NOT wrap the JSON in backticks or any markdown.
+    - Do NOT add any text before or after the JSON object.
+    """
+)
 
-# 2) Core system instructions (no JSON braces needed here)
-SYSTEM_INSTRUCTIONS = """
-You are an executive assistant that extracts tasks into a strict JSON format.
+FOLLOWUP_BEHAVIOR_BLOCK = dedent(
+    """
+    FOLLOW-UP QUESTION BEHAVIOR
 
-Your job:
+    Your job has two parts on every turn:
 
-1. Summarize what the user wants to accomplish in natural language.
-2. Extract tasks as JSON objects following the JSON schema provided to you.
-3. You MUST always output valid JSON that exactly matches the schema.
-4. Do NOT include any extra text, explanations, or markdown. JSON only.
+    1) REPLY:
+       - Summarize what you understand the user wants to accomplish.
+       - If any important scheduling or execution fields are missing or unclear
+         for any task (date, time, duration, priority, importance, anyone_needed),
+         you MUST ask very specific follow-up questions in "reply".
+       - Ask only what is needed to move the tasks toward being fully specified.
+       - If multiple tasks are missing info, you may ask a short numbered list of questions.
 
-Rules about interpretation:
+    2) TASK JSON:
+       - Populate as many fields as you can with high confidence.
+       - If you do NOT have enough information to safely fill a field,
+         set that field to null and DO NOT guess.
+       - It is OK for "tasks" to contain nulls if you are waiting on the user
+         to answer your follow-up questions.
 
-- You will be told TODAY'S DATE explicitly.
-- ALWAYS convert relative dates ("tomorrow", "next week", "in 3 days") to absolute YYYY-MM-DD values using TODAY'S DATE.
-- If the user gives NO date information:
-    → "date" should be null.
-- If the user gives vague information (e.g., "sometime soon", "later"):
-    → "confidence" must be between 1 and 3.
-- If the user gives partial details:
-    → "confidence" between 4 and 6.
-- Only assign confidence 7–10 when multiple fields are explicitly provided
-  (for example: clear description AND date AND priority).
-- Do NOT invent information the user did not provide.
-- It is better to leave fields as null than to guess.
-""".strip()
+    Stopping condition (your internal rule of thumb):
+    - Once you have:
+        * a concrete description,
+        * a reasonably precise date (or the user explicitly says they don't care),
+        * a rough duration (or the user explicitly says they don't care),
+        * at least a rough priority/importance,
+      for each task, you may stop asking follow-up questions and instead focus
+      your "reply" on confirming the plan and next actions.
 
+    Relative dates:
+    - If the user says "today", "tomorrow", "this Friday", "next week", etc.,
+      convert to an exact YYYY-MM-DD using the current date given to you.
+    - If you are not sure WHICH specific day (for example, "sometime next month"),
+      keep "date" as null and ask a follow-up question.
 
-# 3) Few-shot examples: user + assistant JSON
-EXAMPLE_USER_1 = "I need to pay my water, electric, and credit card bills tonight."
+    Confidence:
+    - Use "confidence" to represent how sure you are that each field is correct.
+    - If you had to infer something, keep confidence lower (e.g., 5–7).
+    - If the user explicitly stated it, confidence can be higher (8–10).
+    """
+)
 
-EXAMPLE_ASSISTANT_1 = """
-{
-  "reply": "You want to pay your main household bills (water, electric, and credit card) tonight.",
-  "tasks": [
+EXAMPLES_BLOCK = dedent(
+    r"""
+    EXAMPLE 1 (missing info → ask questions, leave fields null):
+
+    User: "I need to schedule a coaching call and block time to pay my bills."
+
+    Possible JSON response:
+
     {
-      "description": "Pay water bill",
-      "date": null,
-      "time": null,
-      "duration": 15,
-      "priority": "High",
-      "importance": "Urgent and Important",
-      "confidence": 6,
-      "additional_details": "Household utility; user said 'tonight' but no specific time.",
-      "anyone_needed": null
-    },
-    {
-      "description": "Pay electric bill",
-      "date": null,
-      "time": null,
-      "duration": 15,
-      "priority": "High",
-      "importance": "Urgent and Important",
-      "confidence": 6,
-      "additional_details": "Household utility; user said 'tonight' but no specific time.",
-      "anyone_needed": null
-    },
-    {
-      "description": "Pay credit card bill",
-      "date": null,
-      "time": null,
-      "duration": 15,
-      "priority": "Medium",
-      "importance": "Urgent and Important",
-      "confidence": 5,
-      "additional_details": "Financial bill; due date not specified.",
-      "anyone_needed": null
+      "reply": "Got it — you want to schedule a coaching call and also set aside time to pay your bills. I have a few quick questions so I can set these up properly:\n\n1) When would you like to have the coaching call (date and approximate time)?\n2) About how long should the coaching call be?\n3) When would you like to block time to pay your bills, and about how long do you usually need?",
+      "tasks": [
+        {
+          "description": "Schedule a coaching call",
+          "date": null,
+          "time": null,
+          "duration": null,
+          "priority": "High",
+          "importance": "Not Urgent but Important",
+          "confidence": 7,
+          "additional_details": "Needs a date and time to be fully scheduled.",
+          "anyone_needed": "coach"
+        },
+        {
+          "description": "Block time to pay bills",
+          "date": null,
+          "time": null,
+          "duration": null,
+          "priority": "Medium",
+          "importance": "Urgent and Important",
+          "confidence": 6,
+          "additional_details": "User did not specify when or how long.",
+          "anyone_needed": null
+        }
+      ]
     }
-  ]
-}
-""".strip()
 
+    EXAMPLE 2 (enough info → no follow-up questions):
 
-EXAMPLE_USER_2 = "Tomorrow I need to schedule a coaching call and block 60 minutes to prep for it."
+    User: "Tomorrow at 3pm I need a 30-minute block to call the bank about my car loan."
 
-EXAMPLE_ASSISTANT_2 = """
-{
-  "reply": "You want to schedule a coaching call for tomorrow and reserve an hour to prepare for it.",
-  "tasks": [
+    Possible JSON response:
+
     {
-      "description": "Schedule coaching call",
-      "date": "<TOMORROW_DATE>",
-      "time": null,
-      "duration": null,
-      "priority": "High",
-      "importance": "Not Urgent but Important",
-      "confidence": 7,
-      "additional_details": "User specified the call should happen tomorrow, but no time given.",
-      "anyone_needed": "coach"
-    },
-    {
-      "description": "Prepare for coaching call",
-      "date": "<TOMORROW_DATE>",
-      "time": null,
-      "duration": 60,
-      "priority": "Medium",
-      "importance": "Not Urgent but Important",
-      "confidence": 7,
-      "additional_details": "User explicitly requested a 60 minute prep block.",
-      "anyone_needed": null
+      "reply": "You want to block off 30 minutes tomorrow at 15:00 to call the bank about your car loan. I'll treat this as a high-priority, urgent and important task.",
+      "tasks": [
+        {
+          "description": "Call the bank about car loan",
+          "date": "<TOMORROW_YYYY-MM-DD>",
+          "time": "15:00",
+          "duration": 30,
+          "priority": "High",
+          "importance": "Urgent and Important",
+          "confidence": 9,
+          "additional_details": "Phone call about car loan; user explicitly gave time and duration.",
+          "anyone_needed": "bank"
+        }
+      ]
     }
-  ]
-}
-""".strip()
-
+    """
+)
 
 def build_system_prompt(today: str | None = None) -> str:
     """
-    Build the final SYSTEM_PROMPT string using today's date,
-    the core instructions, the JSON schema, and the few-shot examples.
+    Build the full SYSTEM_PROMPT string, injecting today's date and
+    combining the core instructions, JSON schema, follow-up behavior,
+    and examples into one prompt.
     """
     if today is None:
         today = date.today().isoformat()
 
-    # Compute tomorrow (used to fill in the example)
-    from datetime import datetime, timedelta
+    header = dedent(
+        f"""
+        You are an executive assistant that helps the user turn natural-language
+        descriptions of what they need to do into structured tasks for automation
+        and scheduling.
 
-    today_dt = datetime.fromisoformat(today)
-    tomorrow = (today_dt + timedelta(days=1)).date().isoformat()
+        TODAY'S DATE (for interpreting relative dates) IS: {today}
 
-    # Replace the placeholder in the example assistant JSON
-    example_assistant_2_filled = EXAMPLE_ASSISTANT_2.replace("<TOMORROW_DATE>", tomorrow)
+        The user will describe tasks, projects, errands, goals, deadlines, etc.
+        Your job is to:
+        - Understand what they want to accomplish.
+        - Ask targeted follow-up questions if needed.
+        - Output a single strict JSON object matching the required schema.
 
-    few_shot_1 = f'User: "{EXAMPLE_USER_1}"\nAssistant:\n{EXAMPLE_ASSISTANT_1}'
-    few_shot_2 = f'User: "{EXAMPLE_USER_2}"\nAssistant:\n{example_assistant_2_filled}'
+        Rules about interpretation:
+        - You will be told TODAY'S DATE explicitly.
+        - ALWAYS convert relative dates ("tomorrow", "next week", "in 3 days")
+          to absolute YYYY-MM-DD values using TODAY'S DATE.
+        - If the user gives NO date information:
+            → "date" should be null.
+        - If the user gives vague information (e.g., "sometime soon", "later"):
+            → "confidence" must be between 1 and 3.
+        - If the user gives partial details:
+            → "confidence" between 4 and 6.
+        - Only assign confidence 7–10 when multiple fields are explicitly provided
+          (for example: clear description AND date AND priority).
+        - Do NOT invent information the user did not provide.
+        - It is better to leave fields as null than to guess.
+        """
+    ).strip()
 
-    # IMPORTANT: no raw { } JSON in the f-string itself — only in the variables.
-    system_prompt = f"""
-TODAY'S DATE IS: {today}
+    parts = [
+        header,
+        "",
+        SCHEMA_BLOCK.strip(),
+        "",
+        FOLLOWUP_BEHAVIOR_BLOCK.strip(),
+        "",
+        EXAMPLES_BLOCK.strip(),
+    ]
 
-{SYSTEM_INSTRUCTIONS}
+    return "\n\n".join(parts)
 
-Here is the exact JSON schema you MUST follow:
-
-{SCHEMA_BLOCK}
-
-Here are examples of the correct format and level of detail:
-
-{few_shot_1}
-
-{few_shot_2}
-""".strip()
-
-    return system_prompt
 
 if __name__ == "__main__":
     print(build_system_prompt())
-

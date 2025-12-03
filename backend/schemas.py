@@ -1,11 +1,14 @@
 # backend/schemas.py
 from pydantic import BaseModel
-from typing import List, Optional, Union 
+from typing import List, Optional, Union, Literal
 
-
+class Message(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+    
 class ChatRequest(BaseModel):
     message: str
-
+    history: Optional[List[Message]] = None
 
 class Task(BaseModel):
     # Required

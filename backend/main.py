@@ -10,9 +10,13 @@ from pydantic import BaseModel
 
 
 from dotenv import load_dotenv
+
 from openai import OpenAI
-from .schemas import ChatRequest, ChatResponse, Task
+
+from .schemas import ChatRequest, ChatResponse, Task, Message
+
 from datetime import date
+
 from .prompt_parts import build_system_prompt
 
 
@@ -27,12 +31,12 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust this to your needs
-    allow_credentials=True,
+    allow_origins=["*"],  
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# route to add a task
+
 @app.post("/add_task")
 def add_task(task: Task):
 
@@ -43,28 +47,32 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    # 1. Call OpenAI with the system prompt + user message
+    # Build messages array with system + history + latest user message
+    chat_messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+    ]
+
+    if request.history:
+        for m in request.history:
+            chat_messages.append({"role": m.role, "content": m.content})
+
+    chat_messages.append({"role": "user", "content": request.message})
+
     try:
         completion = client.chat.completions.create(
-            model="gpt-4.1-mini",  # or any other model you prefer
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": request.message},
-            ],
+            model="gpt-4.1-mini",
+            messages=chat_messages,   # <-- use history-aware messages
             temperature=0,
         )
 
-        # 2. Extract the model's reply text
         raw_content = completion.choices[0].message.content
 
     except Exception as e:
-        # If the OpenAI call fails for any reason
         raise HTTPException(
             status_code=500,
             detail=f"OpenAI API error: {e}",
         )
 
-    # 3. Parse the JSON the model returned
     try:
         data = json.loads(raw_content)
     except json.JSONDecodeError:
@@ -73,7 +81,6 @@ async def chat(request: ChatRequest):
             detail=f"Model returned invalid JSON: {raw_content[:200]}",
         )
 
-# 4. Map JSON "tasks" into your Pydantic Task models
     tasks_data = data.get("tasks", []) or []
     tasks = []
 
