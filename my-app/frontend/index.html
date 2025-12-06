@@ -2,33 +2,85 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Chat-based Task Planner (Local Test)</title>
+  <title>AI Task Planner</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="app-container">
-    <h1>Chat-based Task Planner (Local)</h1>
+  <div class="app-shell">
+    <!-- Top bar -->
+    <header class="top-bar">
+      <div class="top-bar-left">
+        <div class="app-logo">✓</div>
+        <div>
+          <h1 class="app-title">AI Task Planner</h1>
+          <p class="app-subtitle">Talk through your day. I’ll structure the tasks.</p>
+        </div>
+      </div>
+      <div class="top-bar-right">
+        <span class="status-dot"></span>
+        <span class="status-text">Backend: Localhost 8000</span>
+      </div>
+    </header>
 
-    <div id="chat-window">
-      <div id="messages"></div>
-    </div>
+    <!-- Main layout -->
+    <main class="layout">
+      <!-- Chat panel -->
+      <section class="panel chat-panel">
+        <div class="panel-header">
+          <h2>Conversation</h2>
+          <p class="panel-description">
+            Type what you need to get done. I’ll ask follow-ups and extract tasks.
+          </p>
+        </div>
 
-    <form id="chat-form">
-      <textarea
-        id="user-input"
-        placeholder="Talk through what you need to get done..."
-        rows="3"
-      ></textarea>
-      <button type="submit">Send</button>
-    </form>
+        <div id="chat-window" class="chat-window">
+          <div id="messages" class="messages"></div>
+        </div>
 
-    <div id="result-section">
-      <h2>Raw Backend Response (JSON)</h2>
-      <pre id="raw-response"></pre>
+        <form id="chat-form" class="chat-input">
+          <label for="user-input" class="input-label">Describe what you need to do</label>
+          <div class="input-row">
+            <textarea
+              id="user-input"
+              placeholder="e.g. Tomorrow I need a haircut, pay my credit card bill, and schedule a coaching call…"
+              rows="3"
+            ></textarea>
+            <button type="submit" class="send-button">Send</button>
+          </div>
+          <p class="hint-text">
+            Pro tip: write naturally. The assistant will ask follow-up questions until each task is “schedule-ready.”
+          </p>
+        </form>
+      </section>
 
-      <h2>Extracted Tasks (if present)</h2>
-      <ul id="tasks-list"></ul>
-    </div>
+      <!-- Right-side panel -->
+      <section class="panel side-panel">
+        <div class="panel-section">
+          <div class="panel-header">
+            <h2>Extracted Tasks</h2>
+            <p class="panel-description">
+              Tasks from the latest response. These will eventually drive automations.
+            </p>
+          </div>
+          <ul id="tasks-list" class="tasks-list"></ul>
+        </div>
+
+        <div class="panel-section">
+          <div class="panel-header row">
+            <div>
+              <h2>Raw JSON</h2>
+              <p class="panel-description">
+                Exact payload returned by the backend (for debugging).
+              </p>
+            </div>
+            <button type="button" class="toggle-json-button" onclick="document.body.classList.toggle('hide-json')">
+              Toggle
+            </button>
+          </div>
+          <pre id="raw-response" class="raw-response"></pre>
+        </div>
+      </section>
+    </main>
   </div>
 
   <script src="app.js"></script>

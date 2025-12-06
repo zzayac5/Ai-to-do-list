@@ -1,0 +1,23 @@
+# Virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Environment variables / secrets
+.environment
+.env 
+
+
+# VS Code settings (optional)
+.vscode/
+
+# macOS Finder noise
+.DS_Store
+
+# SQLite database (optional, if you don't want the actual DB file in git)
+tasks.db
+
+*.db

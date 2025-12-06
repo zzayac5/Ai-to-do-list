@@ -1,18 +1,31 @@
 # backend/schemas.py
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Union, Literal
 
+class Message(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+    
 class ChatRequest(BaseModel):
     message: str
+    history: Optional[List[Message]] = None
+    session_id: Optional[str] = "default"
 
 class Task(BaseModel):
-    description: str                    # what to do
-    date: Optional[str] = None          # e.g. "2025-11-27"
-    time: Optional[str] = None          # e.g. "14:30"
-    duration_minutes: Optional[int] = None
-    priority: Optional[str] = None      # e.g. "high", "medium", "low"
-    context: Optional[str] = None       # optional "why" or extra detail
+    # Required
+    description: str
+
+    # Optional fields, all default to None
+    date: Optional[str] = None             # "2025-12-01" or None
+    time: Optional[str] = None             # "14:30" or None
+    duration: Optional[int] = None         # minutes or None
+    priority: Optional[Union[str, int]] = None         # "High" | "Medium" | "Low" | "None"
+    importance: Optional[str] = None       # Eisenhower quadrant or None
+    confidence: Optional[int] = None       # 1–10 or None
+    additional_details: Optional[str] = None
+    anyone_needed: Optional[str] = None
+
 
 class ChatResponse(BaseModel):
-    reply: str                          # friendly natural-language reply
-    tasks: List[Task]                   # structured list for automation
+    reply: str
+    tasks: List[Task]

@@ -6,14 +6,17 @@ def init_db():
     # Create a table if it doesn't exist
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS tasks (
-        id INTEGER PRIMARY KEY,
-        description TEXT,
-        priority INTEGER,
-        importance TEXT,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        description TEXT NOT NULL,
+        date TEXT,
+        time TEXT,
         duration INTEGER,
+        priority TEXT,
+        importance TEXT,
         confidence INTEGER,
-        due_date TEXT
-    )
+        additional_details TEXT,
+        anyone_needed TEXT
+    );
     ''')
     conn.commit()
     conn.close()
