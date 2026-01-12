@@ -89,7 +89,7 @@ EXAMPLES_BLOCK = dedent(
     Possible JSON response:
 
     {
-      "reply": "Got it — you want to schedule a coaching call and also set aside time to pay your bills. I have a few quick questions so I can set these up properly:\n\n1) When would you like to have the coaching call (date and approximate time)?\n2) About how long should the coaching call be?\n3) When would you like to block time to pay your bills, and about how long do you usually need?",
+      "reply": "I have a few quick questions so I can set these up properly:\n\n1) When would you like to have the coaching call (date and approximate time)?\n2) About how long should the coaching call be?\n3) When would you like to block time to pay your bills, and about how long do you usually need?",
       "tasks": [
         {
           "description": "Schedule a coaching call",
@@ -118,12 +118,12 @@ EXAMPLES_BLOCK = dedent(
 
     EXAMPLE 2 (enough info → no follow-up questions):
 
-    User: "Tomorrow at 3pm I need a 30-minute block to call the bank about my car loan."
+    User: "Tomorrow at 3pm I need a 30-minute block to call the bank about my car loan this is urgent."
 
     Possible JSON response:
 
     {
-      "reply": "You want to block off 30 minutes tomorrow at 15:00 to call the bank about your car loan. I'll treat this as a high-priority, urgent and important task.",
+      "reply": "I'll treat this as a high-priority, urgent and important task.",
       "tasks": [
         {
           "description": "Call the bank about car loan",
