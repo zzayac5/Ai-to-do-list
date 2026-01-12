@@ -1,20 +1,30 @@
+import time
 from datetime import date 
 
-class ToDoTask:
-    def __init__ (self, date, time, description, duration, importance, note):
+Today = date.today()
+ 
 
-        self.date = date
-        self.time = time
+class ToDoTask:
+    def __init__ (self, date_of_task, time_of_task, description, duration, importance, note):
+
+        self.date = date_of_task.isoformat()
+        self.time = time_of_task
         self.description = description
         self.duration = duration
         self.importance = importance
         self.note = note
 
-    
-    def establish_importance (self):
-        if self.date is date.today():
-            raise ValueError("no time left")
-        else:
-            pass
-        
 
+
+### Test Block ###
+
+if __name__ == "__main__":
+    task = ToDoTask(
+        date.today(),
+        "0900",
+        "test the class",
+        60,
+        "High",
+        "test"
+    )
+    print(task.date, task.time, task.description, task.duration, task.importance, task.note)
