@@ -14,15 +14,24 @@ SCHEMA_BLOCK = dedent(
       "reply": "<natural language reply to the user, including any follow-up questions>",
       "tasks": [
         {
-          "description": "<short task description>",
-          "date": "<YYYY-MM-DD or null>",
-          "time": "<HH:MM (24-hour) or null>",
-          "duration": <integer minutes or null>,
-          "priority": "<High | Medium | Low | None, or null>",
-          "importance": "<Urgent and Important | Not Urgent but Important | Urgent but Not Important | Not Urgent and Not Important, or null>",
-          "confidence": <integer 1–10 or null>,
-          "additional_details": "<extra context or null>",
-          "anyone_needed": "<comma-separated people needed or null>"
+        date_of_task: dgiate,
+        time_of_task: time,
+        description: str,
+
+        optimistic_minutes: int,
+        most_likely_minutes: int,
+        pessimistic_minutes: int,
+
+        importance: str,
+        note: str,
+
+        due_date_flexible: bool = True,
+        required_resources: Optional[List[str]] = None,
+        required_people: Optional[List[str]] = None,
+        dependencies: Optional[List["ToDoTask"]] = None,
+        recurring: bool = False
+    ):
+        
         }
       ]
     }
