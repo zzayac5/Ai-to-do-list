@@ -96,7 +96,9 @@ async def chat(request: ChatRequest):
             description=t.get("description", "") or "",
             date=t.get("date"),
             time=t.get("time"),
-            duration=t.get("duration"),
+            duration_optimistic=t.get("optimistic duration"),
+            duration_most_likely=t.get("most likely duration"),
+            duration_pessimist=t.get("pessimistic duration"),            
             priority=t.get("priority"),
             importance=t.get("importance"),
             confidence=t.get("confidence"),
@@ -104,6 +106,14 @@ async def chat(request: ChatRequest):
             anyone_needed=t.get("anyone_needed"),
         )
         tasks.append(task)
+
+
+  #      due_date_flexible: bool = True,
+  #      required_resources: Optional[List[str]] = None,
+  #      required_people: Optional[List[str]] = None,
+  #      dependencies: Optional[List["ToDoTask"]] = None,
+  #      recurring: bool = False
+   # ):
 
     reply = data.get("reply", "") or ""
     # Persist conversation so follow-ups have context

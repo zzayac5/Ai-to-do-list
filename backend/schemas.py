@@ -29,3 +29,21 @@ class Task(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
     tasks: List[Task]
+
+
+#        date_of_task: dgiate,
+#        time_of_task: time,
+#        description: str,
+
+#        optimistic_minutes: int,
+#        most_likely_minutes: int,
+#        pessimistic_minutes: int,
+
+#        importance: str,
+#        note: str,
+
+#        due_date_flexible: bool = True,
+#        required_resources: Optional[List[str]] = None,
+#        required_people: Optional[List[str]] = None,
+#        dependencies: Optional[List["ToDoTask"]] = None,
+#        recurring: bool = False
