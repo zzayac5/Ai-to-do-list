@@ -88,3 +88,45 @@ chatForm.addEventListener("submit", (event) => {
   userInput.value = "";
   sendMessage(text);
 });
+
+let recognition;
+let isRecording = false;
+
+function setupVoiceInput() {
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    console.warn("Speech recognition not supported in this browser.");
+    return;
+  }
+
+  recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.lang = "en-US";
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    userInput.value = transcript;
+    sendMessage(transcript);
+  };
+
+  recognition.onerror = (event) => {
+    console.error("Speech recognition error:", event.error);
+  };
+
+  recognition.onend = () => {
+    isRecording = false;
+  };
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "v" && !isRecording) {
+      isRecording = true;
+      recognition.start();
+      console.log("Voice input started");
+    }
+  });
+}
+
+setupVoiceInput();
