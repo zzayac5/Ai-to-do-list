@@ -45,3 +45,9 @@ class ToDoTask:
             "end": self.end_datetime.isoformat(),
             "risk": round(self.std_dev, 2)
         }
+
+class SubTask:
+    def __init__(self, task_input, sub_task_input):
+        super().__init__(task_input)
+        self.sub_task_input = sub_task_input
+        
