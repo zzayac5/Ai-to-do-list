@@ -1,134 +1,97 @@
-# Ai Enabled To Do Chat Agent\
+# AI To-Do List (FastAPI + LLM Tool Calling)
 
-AI-Enabled To-Do List
-A FastAPI-powered backend + lightweight frontend that turns natural language into structured tasks using OpenAI models.
-Overview
-This project is an AI-driven task extraction system.
-Users can type plain-language inputs such as:
-"I need to pay my bills and schedule a coaching call tomorrow."
-The backend uses structured prompting and the OpenAI API to convert this into highly structured JSON tasks including:
-description
-date (with inferred “today/tomorrow/this week”)
-time
-duration
-priority
-importance category
-confidence score
-additional details
-people required
-The goal: automate planning, prioritization, and future scheduling based on short user messages.
+FastAPI backend that can capture tasks via chat and (optionally) use OpenAI function calling to persist + prioritize tasks.
 
-AI-Enabled To-Do List
-A FastAPI-powered backend + lightweight frontend that turns natural language into structured tasks using OpenAI models.
-Overview
-This project is an AI-driven task extraction system.
-Users can type plain-language inputs such as:
-"I need to pay my bills and schedule a coaching call tomorrow."
-The backend uses structured prompting and the OpenAI API to convert this into highly structured JSON tasks including:
-description
-date (with inferred “today/tomorrow/this week”)
-time
-duration
-priority
-importance category
-confidence score
-additional details
-people required
-The goal: automate planning, prioritization, and future scheduling based on short user messages.
+## Prereqs
+- Python 3.11+ (tested locally with Python 3.13)
 
-
-my-app/
-│
-├── backend/
-│   ├── main.py             # FastAPI app + OpenAI request handling
-│   ├── schemas.py          # Pydantic models for validation
-│   ├── database.py         # SQLite wrapper (placeholder)
-│   ├── prompt_parts.py     # System prompt, examples, and JSON schema template
-│
-├── frontend/
-│   ├── index.html          # UI for sending messages
-│   ├── app.js              # JS fetch call to backend
-│   ├── styles.css          # Basic styling
-│
-├── .venv/                  # Virtual environment (ignored in git)
-├── .env                    # API keys (ignored in git)
-├── .gitignore              # Ignore rules
-├── requirements.txt        # Python dependencies
-└── README.md               # This file
-
-
-
-Getting Started
-1. Clone the repository
-
-git clone https://github.com/zzayac5/Ai-to-do-list.git
-cd Ai-to-do-list/my-app
-
-2. Create and activate the virtual environment
-
+## Local Setup (Backend)
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
-
-3. Install dependencies
-
 pip install -r requirements.txt
+cp .env.example .env
+```
 
-4. Add your .env file
-Create a file named .env in the project root:
-
-OPENAI_API_KEY=your_key_here
-
-5. Run the backend
-From inside my-app/:
-
+Run the API:
+```bash
 uvicorn backend.main:app --reload --port 8000
+```
 
-The API will be live at:
-http://127.0.0.1:8000
+By default, the backend runs with a **mock LLM** so it boots without API keys. To use the real model:
+- set `OPENAI_API_KEY` in `.env`
+- set `MOCK_LLM=false` (or delete it)
+- optionally set `OPENAI_MODEL` (default: `gpt-4o-mini`)
 
-6. Run the frontend
-Open frontend/index.html in your browser
-—or—
-use a VS Code Live Server extension.
+Health check:
+```bash
+curl http://127.0.0.1:8000/health
+```
 
-Endpoint
-POST /chat
-Example Request Body
-{
-  "message": "I need to pay my bills and schedule a coaching call tomorrow."
-}
-Example Response (simplified)
-{
-  "reply": "You want to pay your bills tomorrow and schedule a coaching call.",
-  "tasks": [
-    {
-      "description": "Pay bills",
-      "date": "2025-12-01",
-      "priority": "Medium",
-      "importance": "Urgent and Important",
-      "confidence": 8
-    }
-  ]
-}
-Development Workflow
-Branching Strategy (simple but professional)
-main                 ← stable, deploy-ready code
-feature/...          ← work on new features
-fix/...              ← bug fixes
-refactor/...         ← improvements without behavior changes
-Typical workflow
-git pull origin main
-git switch -c feature/improve-prompt-engineering
-# write code...
-git add .
-git commit -m "feat: improve date inference + example prompts"
-git push -u origin feature/improve-prompt-engineering
-# merge via GitHub
-Roadmap
- Improve date inference (today/tomorrow/next week)
- Add user accounts + persistent tasks
- Build full frontend dashboard
- Add priority scoring system
- Deploy backend to Render/Fly.io and frontend to Netlify
- Mobile-friendly version
+## Use It Right Now (No API Keys)
+The mock LLM shows the end-to-end tool loop: it will call tools like `create_task`, `list_tasks`, and `prioritize_tasks`.
 
+1) Start the server:
+```bash
+uvicorn backend.main:app --reload --port 8000
+```
+
+2) Send a message (creates a task via tool calling):
+```bash
+curl -sS http://127.0.0.1:8000/chat \\
+  -H "Content-Type: application/json" \\
+  -d '{"message":"Tomorrow I need to call the bank about my car loan."}' | python3 -m json.tool
+```
+
+3) List tasks:
+```bash
+curl -sS http://127.0.0.1:8000/v1/tasks | python3 -m json.tool
+```
+
+4) Prioritize tasks:
+```bash
+curl -sS http://127.0.0.1:8000/v1/prioritize \\
+  -H "Content-Type: application/json" \\
+  -d '{}' | python3 -m json.tool
+```
+
+## Local Setup (Frontend)
+The frontend is a static page that calls the backend.
+
+From the repo root:
+```bash
+cd frontend
+python3 -m http.server 5500
+```
+
+Then open:
+- http://127.0.0.1:5500
+
+## Quick Demo Script (No API Keys)
+Runs a short mock conversation directly against the orchestrator + local DB:
+```bash
+python3 -m backend.scripts.conversation_test
+```
+
+## Using the Real OpenAI API
+1) Put your key in `.env`:
+```bash
+OPENAI_API_KEY=...
+MOCK_LLM=false
+```
+
+2) Restart the backend and use the same `/chat` endpoint. The model can now decide which tools to call.
+
+## API Endpoints
+- `GET /health`
+- `POST /chat` (LLM tool-calling loop; persists tasks via tools)
+- `POST /v1/tasks`, `GET /v1/tasks`, `GET /v1/tasks/{id}`, `PATCH /v1/tasks/{id}`
+- `POST /v1/prioritize`
+- `POST /v1/review_day`
+
+## Notes
+- Local DB defaults to SQLite at `./app.db` (ignored by git). Override with `DATABASE_URL`.
+- Google Calendar + Twilio are stubbed right now (env vars are in `.env.example` for later).
+
+## Deployment (Render)
+This repo includes `render.yaml` (web service + Postgres). See `docs/deploy_render.md`.

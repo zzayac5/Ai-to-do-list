@@ -55,20 +55,58 @@ async function sendMessage(messageText) {
     // Clear current tasks list
     tasksList.innerHTML = "";
 
-    // If tasks array exists, render it
+    function renderTask(task, index) {
+      const li = document.createElement("li");
+
+      const id = task.id ? `#${task.id} ` : "";
+      const title = task.title || task.description || `Task ${index + 1}`;
+      const due = task.due_at || task.due_date || task.date || "";
+
+      li.textContent = `${id}${title}${due ? " — due " + due : ""}`;
+      tasksList.appendChild(li);
+    }
+
+    // Back-compat: if tasks array exists, render it.
     if (Array.isArray(data.tasks)) {
-      data.tasks.forEach((task, index) => {
+      data.tasks.forEach((task, index) => renderTask(task, index));
+      return;
+    }
+
+    // New API: use tool_results to render created/listed/prioritized tasks.
+    const collectedTasks = [];
+    let prioritized = null;
+
+    if (Array.isArray(data.tool_results)) {
+      data.tool_results.forEach((tr) => {
+        if (!tr || !tr.result) return;
+
+        if (tr.name === "create_task" && typeof tr.result === "object" && !Array.isArray(tr.result)) {
+          collectedTasks.push(tr.result);
+        }
+
+        if (tr.name === "list_tasks" && Array.isArray(tr.result)) {
+          collectedTasks.push(...tr.result);
+        }
+
+        if (tr.name === "prioritize_tasks" && tr.result && Array.isArray(tr.result.results)) {
+          prioritized = tr.result;
+        }
+      });
+    }
+
+    if (collectedTasks.length > 0) {
+      collectedTasks.forEach((task, index) => renderTask(task, index));
+      return;
+    }
+
+    if (prioritized) {
+      prioritized.results.forEach((r, index) => {
         const li = document.createElement("li");
-
-        // Try to be defensive about fields
-        const description = task.description || task.title || `Task ${index + 1}`;
-        const date = task.date || task.due_date || task.dueTime || "";
-        const time = task.time || task.start_time || "";
-
-        li.textContent = `${description}${
-          date || time ? " — " + [date, time].filter(Boolean).join(" @ ") : ""
-        }`;
-
+        const chance =
+          typeof r.completion_chance === "number"
+            ? ` chance=${Math.round(r.completion_chance * 100)}%`
+            : "";
+        li.textContent = `Task #${r.task_id} — priority=${r.priority_score.toFixed(2)}${chance}`;
         tasksList.appendChild(li);
       });
     }

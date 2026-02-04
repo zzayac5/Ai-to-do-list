@@ -3,3 +3,10 @@ uvicorn[standard]
 openai
 pydantic
 python-dotenv
+sqlalchemy>=2.0
+alembic>=1.13
+psycopg[binary]>=3.1
+twilio>=9.0
+google-api-python-client>=2.0
+google-auth-httplib2>=0.2
+google-auth-oauthlib>=1.2
